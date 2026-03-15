@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "file": "src/compute_backend.c",
+    "arguments": [
+      "cc",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Iinclude",
+      "-std=c11",
+      "-c",
+      "src/compute_backend.c",
+      "-o",
+      "build/compute_backend.o"
+    ],
+    "directory": "/home/aalbatrossguy/Teddy",
+    "output": "build/compute_backend.o"
+  }
+]
