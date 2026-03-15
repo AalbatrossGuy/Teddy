@@ -2,20 +2,20 @@
 #define COMPUTE_BACKEND_H
 
 typedef enum {
-  MG_BACKEND_CPU,
-  MG_BACKEND_GPU
-} MgBackendType;
+  COMPUTE_BACKEND_CPU,
+  COMPUTE_BACKEND_GPU
+} ComputeBackendType;
 
 typedef struct {
-  MgBackendType type;
+  ComputeBackendType type;
   void *device_handle;
-} MgBackend;
+} ComputeBackend;
 
-MgBackend *mg_backend_init(const char *kernel_path);
-void mg_backend_destroy(MgBackend *backend);
-void mg_backend_finish(MgBackend *backend);
+ComputeBackend *compute_backend_init(const char *kernel_path);
+void compute_backend_destroy(ComputeBackend *backend);
+void compute_backend_finish(ComputeBackend *backend);
 
-MgBackend *mg_backend_global(void);
-void mg_backend_set_global(MgBackend *backend);
+ComputeBackend *compute_backend_global(void);
+void compute_backend_set_global(ComputeBackend *backend);
 
 #endif
