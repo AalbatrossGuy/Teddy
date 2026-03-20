@@ -41,3 +41,94 @@ void compute_math_accumulate(float *dest, const float *src, int total) {
   }
 }
 
+void compute_math_matrix_multiplication_nn(float *out, const float *term_a, const float *term_b, int m, int n, int k, int zero_output) {
+  if (zero_output) {
+    memset(out, 0, sizeof(float) * m * n);
+  }
+
+  for (int row = 0; row < m; row++) {
+    for(int inner_row = 0; inner_row < k; inner_row++) {
+      for (int column = 0; column < n; column++) {
+        out[row * n + column] += term_a[row * k + inner_row] * term_b[inner_row * n + column];
+      }
+    }
+  }
+}
+
+
+void compute_math_matrix_multiplication_nt(float *out, const float *term_a, const float *term_b, int m, int n, int k, int zero_output) {
+  if (zero_output) {
+    memset(out, 0, sizeof(float) * m * n);
+  }
+
+  for (int row = 0; row < m; row++) {
+    for(int inner_row = 0; inner_row < k; inner_row++) {
+      for (int column = 0; column < n; column++) {
+        out[row * n + column] += term_a[row * k + inner_row] * term_b[column * k + inner_row];
+      }
+    }
+  }
+}
+
+
+void compute_math_matrix_multiplication_tn(float *out, const float *term_a, const float *term_b, int m, int n, int k, int zero_output) {
+  if (zero_output) {
+    memset(out, 0, sizeof(float) * m * n);
+  }
+
+  for (int inner_row = 0; inner_row < k; inner_row++) {
+    for(int row = 0; row < m; row++) {
+      for (int column = 0; column < n; column++) {
+        out[row * n + column] += term_a[inner_row * m + row] * term_b[inner_row * n + column];
+      }
+    }
+  }
+}
+
+
+void compute_math_matrix_multiplication_tt(float *out, const float *term_a, const float *term_b, int m, int n, int k, int zero_output) {
+  if (zero_output) {
+    memset(out, 0, sizeof(float) * m * n);
+  }
+
+  for (int row = 0; row < m; row++) {
+    for(int column = 0; column < n; column++) {
+      for (int inner_row = 0; inner_row < k; inner_row++) {
+        out[row * n + column] += term_a[inner_row * m + row] * term_b[column * k + inner_row];
+      }
+    }
+  }
+}
+
+void compute_relu_forward(float *out, const float *in, int total) {
+  for (int i = 0; i < total; i++) {
+    out[i] = in[i] > 0.0f ? in[i]: 0.0f;
+  }
+}
+
+void compute_relu_backward(float *input_gradient, const float *in, const float *upstream_gradient, int total) {
+  for (int i = 0; i < total; i++) {
+    input_gradient[i] += (in[i] > 0.0f) ? upstream_gradient[i] : 0.0f;
+  }
+}
+
+void compute_softmax_forward(float *out, const float *in, int total) {
+  float max_value = in[0];
+
+  for (int i = 1; i < total; i++) {
+    if (in[i] > max_value) {
+      max_value = in[i];
+    }
+  }
+
+  float exponential_sum = 0.0f;
+  for (int i = 0; i < total; i++) {
+    out[i] = expf(in[i] - max_value);
+    exponential_sum += out[i];
+  }
+
+  float inverse_sum = 1.0f / exponential_sum;
+  for (int i = 0; i < total; i++) {
+    out[i] *= inverse_sum;
+  }
+}
