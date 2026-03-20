@@ -3,7 +3,7 @@ CFLAGS    := -O2 -Wall -Wextra -Iinclude -std=c11
 LDFLAGS   := -lm
 BUILD_DIR := build
 
-SRCS := src/compute_backend.c
+SRCS := src/compute_backend.c src/math_ops.c
 OBJS := $(SRCS:src/%.c=$(BUILD_DIR)/%.o)
 
 .PHONY: all clean
