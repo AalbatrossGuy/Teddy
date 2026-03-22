@@ -132,3 +132,54 @@ void compute_softmax_forward(float *out, const float *in, int total) {
     out[i] *= inverse_sum;
   }
 }
+
+void compute_softmax_backward(float *input_gradient, const float *softmax_out, const float *upstream_gradient, int vector_size) {
+  for (int i = 0; i < vector_size; i++) {
+    float partial_sum = 0.0f;
+
+    for (int j = 0; j < vector_size; j++) {
+      float jacobian_elem;
+
+      if (i == j) {
+        jacobian_elem = softmax_out[i] * (1.0f - softmax_out[i]);
+      } else {
+        jacobian_elem = -softmax_out[i] * softmax_out[j];
+      }
+
+      partial_sum += jacobian_elem * upstream_gradient[j];
+    }
+
+    input_gradient[i] += partial_sum;
+  }
+}
+
+void compute_cross_entropy_forward(float *out, const float *predicted, const float *expected, int total) {
+  for (int i = 0; i < total; i++) {
+    if (expected[i] == 0.0f) {
+      out[i] = 0.0f;
+    } else {
+      float clamped_data = predicted[i] > 1e-7f ? predicted[i] : 1e-7f;
+      out[i] = -expected[i] * logf(clamped_data);
+    }
+  }
+}
+
+void compute_cross_entropy_predicted(float *predicted_gradient, const float *predicted_value, const float *expected_value, const float *upstream_gradient, int total) {
+  for (int i = 0; i < total; i++) {
+    float clamped_data = predicted_value[i] > 1e-7f ? predicted_value[i] : 1e-7f;
+    predicted_gradient[i] += (-expected_value[i] / clamped_data) * upstream_gradient[i];
+  }
+}
+
+void compute_cross_entropy_expected(float *expected_Gradient, const float *predicted_value, const float *upstream_gradient, int total) {
+  for (int i = 0; i < total; i++) {
+    float clamped_data = predicted_value[i] > 1e-7f ? predicted_value[i] : 1e-7f;
+    expected_Gradient[i] += (-logf(clamped_data)) * upstream_gradient[i];
+  }
+}
+
+void compute_param_update(float *parameter, const float *gradient, float scaled_learning_rate, int total) {
+  for (int i = 0; i < total; i++) {
+    parameter[i] -= scaled_learning_rate * gradient[i];
+  }
+}
