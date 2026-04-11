@@ -118,3 +118,67 @@ void matrix_cross_entropy(Matrix *out, const Matrix *predicted, const Matrix *ex
   int total = predicted->rows * predicted->columns;
   compute_cross_entropy_forward(out->host_data, predicted->host_data, expected->host_data, total);
 }
+
+void matrix_reLU_gradient(Matrix *input_grad, const Matrix *input_val, const Matrix *upstream_grad) {
+  int total = input_val->rows * input_val->columns;
+  compute_relu_backward(input_grad->host_data, input_val->host_data, upstream_grad->host_data, total);
+}
+
+void matrix_softmax_gradient(Matrix *input_grad, const Matrix *softmax_out, const Matrix *upstream_grad) {
+  int vector_size = softmax_out->rows * softmax_out->columns;
+  compute_softmax_backward(input_grad->host_data, softmax_out->host_data, upstream_grad->host_data, vector_size);
+}
+
+void matrix_cross_entropy_gradient_predicted(Matrix *predicted_grad, const Matrix *predicted_val, const Matrix *expected_val, const Matrix *upstream_grad) {
+  int total = predicted_val->rows * predicted_val->columns;
+  compute_cross_entropy_predicted(predicted_grad->host_data,predicted_val->host_data, expected_val->host_data, upstream_grad->host_data, total);
+}
+
+void matrix_cross_entropy_gradient_expected(Matrix *expected_grad, const Matrix *predicted_val, const Matrix *upstream_grad) {
+  int total = predicted_val->rows * predicted_val->columns;
+  compute_cross_entropy_expected(expected_grad->host_data, predicted_val->host_data, upstream_grad->host_data, total);
+}
+
+void matrix_param_update(Matrix *parameter, const Matrix *gradient, float scaled_learning_rate) {
+  int total = parameter->rows * parameter->columns;
+  compute_param_update(parameter->host_data, gradient->host_data, scaled_learning_rate, total);
+}
+
+float matrix_sum(const Matrix *mat) {
+  int total = mat->rows * mat->columns;
+  float *host_buffer;
+  int free_required = 0;
+  float accumlator = 0.0f;
+  host_buffer = mat->host_data;
+
+  for (int i = 0; i < total; i++) {
+    accumlator += host_buffer[i];
+  }
+
+  if (free_required) {
+    free(host_buffer);
+  }
+
+  return accumlator;
+}
+
+int matrix_argmax(const Matrix *mat) {
+  int total = mat->rows * mat->columns;
+  float *host_buffer = mat->host_data;
+  int free_required = 0;
+  int best_index = 0;
+  float best_value = host_buffer[0];
+
+  for(int i = 1; i < total; i++) {
+    if (host_buffer[i] > best_value) {
+      best_value = host_buffer[i];
+      best_index = i;
+    }
+  }
+
+  if (free_required) {
+    free(host_buffer);
+  }
+
+  return best_index;
+}
