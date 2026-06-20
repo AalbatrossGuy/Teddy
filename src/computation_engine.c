@@ -135,3 +135,58 @@ GraphNode *computation_graph_cross_entropy(ComputationGraph *graph, GraphNode *p
   return create_binary_node(graph, predicted_node, expected_node, predicted_node->value->rows, predicted_node->value->columns, GRAPH_OP_CROSS_ENTROPY, flags);
 }
 
+
+static CompiledGraph *sort(ComputationGraph *graph, GraphNode *rootNode) {
+    int capacity = graph->node_count;
+    int *visited_node = (int *)calloc(capacity, sizeof(int));
+    GraphNode **stack = (GraphNode **)malloc(sizeof(GraphNode *) * capacity * 2);
+    GraphNode **sorted_output = (GraphNode **)malloc(sizeof(GraphNode *) * capacity);
+    int stack_top = 0;
+    int output_count = 0;
+
+    stack[stack_top++] = rootNode;
+
+    while (stack_top > 0) {
+        GraphNode *current_node = stack[--stack_top];
+
+        if (current_node->index < 0 || current_node->index >= capacity)
+            continue;
+
+        if (visited_node[current_node->index]) {
+            sorted_output[output_count++] = current_node;
+            continue;
+        }
+
+        visited_node[current_node->index] = 1;
+        stack[stack_top++] = current_node;
+
+        int input_count = graph_op_input_count(current_node->operation);
+        for (int i = input_count - 1; i >= 0; i--) {
+            GraphNode *dependency = current_node->node_inputs[i];
+            if (!dependency) continue;
+            if (dependency->index >= 0 && dependency->index < capacity
+                && !visited_node[dependency->index]) {
+                for (int s = 0; s < stack_top; s++) {
+                    if (stack[s] == dependency) {
+                        for (int r = s; r < stack_top - 1; r++)
+                            stack[r] = stack[r + 1];
+                        stack_top--;
+                        break;
+                    }
+                }
+                stack[stack_top++] = dependency;
+            }
+        }
+    }
+
+    CompiledGraph *program = malloc(sizeof(CompiledGraph));
+    program->length = output_count;
+    program->ordered_nodes = (GraphNode **)malloc(sizeof(GraphNode *) * output_count);
+    memcpy(program->ordered_nodes, sorted_output, sizeof(GraphNode *) * output_count);
+
+    free(visited_node);
+    free(stack);
+    free(sorted_output);
+
+    return program;
+}
