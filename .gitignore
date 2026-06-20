@@ -54,4 +54,9 @@ dkms.conf
 # debug information files
 *.dwo
 .DS_Store
+<<<<<<< HEAD
 .aider*
+||||||| 6b7c7d5
+=======
+.idea/
+>>>>>>> 2c7db80d3dd84e10f9603f7993b2af8f2c023087

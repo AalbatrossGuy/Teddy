@@ -35,7 +35,7 @@ void matrix_softmax(Matrix *out, const Matrix *in);
 void matrix_cross_entropy(Matrix *out, const Matrix *predicted, const Matrix *expected);
 void matrix_reLU_gradient(Matrix *input_grad, const Matrix *input_val, const Matrix *upstream_grad);
 void matrix_softmax_gradient(Matrix *input_grad, const Matrix *softmax_out, const Matrix *upstream_grad);
-void matrix_cross_entropy_gradient_predicted(Matrix *predicted_grad, const Matrix *predicted_val, const Matrix *expected_val);
+void matrix_cross_entropy_gradient_predicted(Matrix *predicted_grad, const Matrix *predicted_val, const Matrix *expected_val, const Matrix *upstream_grad);
 void matrix_cross_entropy_gradient_expected(Matrix *expected_grad, const Matrix *predicted_val, const Matrix *upstream_grad);
 
 void matrix_param_update(Matrix *parameter, const Matrix *gradient, float scaled_learning_rate);
