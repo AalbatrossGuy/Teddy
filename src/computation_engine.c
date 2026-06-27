@@ -190,3 +190,51 @@ static CompiledGraph *sort(ComputationGraph *graph, GraphNode *rootNode) {
 
     return program;
 }
+
+void computation_graph_compile(ComputationGraph *graph) {
+    if (graph->output_node)
+        graph->graph_forward = sort(graph, graph->output_node);
+
+    if (graph->loss_node)
+        graph->graph_loss = sort(graph, graph->loss_node);
+}
+
+void computation_graph_forward(CompiledGraph *graph) {
+    for (int i = 0; i < graph->length; i++) {
+        GraphNode *current_node = graph->ordered_nodes[i];
+        GraphNode *input_a = current_node->node_inputs[0];
+        GraphNode *input_b = current_node->node_inputs[1];
+
+        switch (current_node->operation) {
+            case GRAPH_OP_NONE:
+            case GRAPH_OP_UNARY_BEGIN:
+            case GRAPH_OP_BINARY_BEGIN:
+                break;
+
+            case GRAPH_OP_RELU:
+                matrix_reLU(current_node->value, input_a->value);
+                break;
+
+            case GRAPH_OP_SOFTMAX:
+                matrix_softmax(current_node->value, input_a->value);
+                break;
+
+            case GRAPH_OP_ADD:
+                matrix_add(current_node->value, input_a->value, input_b->value);
+                break;
+
+            case GRAPH_OP_SUB:
+                matrix_sub(current_node->value, input_a->value, input_b->value);
+                break;
+
+            case GRAPH_OP_MAT_MUL:
+                matrix_multiply(current_node->value, input_a->value, input_b->value,
+                                0, 0, 1);
+                break;
+
+            case GRAPH_OP_CROSS_ENTROPY:
+                matrix_cross_entropy(current_node->value, input_a->value, input_b->value);
+                break;
+        }
+    }
+}
