@@ -238,3 +238,93 @@ void computation_graph_forward(CompiledGraph *graph) {
         }
     }
 }
+
+void computation_graph_backward(CompiledGraph *graph) {
+    for (int i = 0; i < graph->length; i++) {
+        GraphNode *node = graph->ordered_nodes[i];
+        if (!(node->flags & GRAPH_NODE_REQUIRES_GRAD))
+            continue;
+        if (node->flags & GRAPH_NODE_PARAMETER)
+            continue;
+        matrix_clear(node->gradient);
+    }
+
+    GraphNode *root_node = graph->ordered_nodes[graph->length - 1];
+    if (root_node->gradient)
+        matrix_fill(root_node->gradient, 1.0f);
+
+    for (int i = graph->length - 1; i >= 0; i--) {
+        GraphNode *current_node = graph->ordered_nodes[i];
+
+        if (!(current_node->flags & GRAPH_NODE_REQUIRES_GRAD))
+            continue;
+
+        GraphNode *input_a = current_node->node_inputs[0];
+        GraphNode *input_b = current_node->node_inputs[1];
+
+        int input_count = graph_op_input_count(current_node->operation);
+        if (input_count == 1 && input_a
+            && !(input_a->flags & GRAPH_NODE_REQUIRES_GRAD))
+            continue;
+        if (input_count == 2 && input_a && input_b
+            && !(input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+            && !(input_b->flags & GRAPH_NODE_REQUIRES_GRAD))
+            continue;
+
+        switch (current_node->operation) {
+            case GRAPH_OP_NONE:
+            case GRAPH_OP_UNARY_BEGIN:
+            case GRAPH_OP_BINARY_BEGIN:
+                break;
+
+            case GRAPH_OP_RELU:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_reLU_gradient(input_a->gradient, input_a->value,
+                                     current_node->gradient);
+                break;
+
+            case GRAPH_OP_SOFTMAX:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_softmax_gradient(input_a->gradient, current_node->value,
+                                        current_node->gradient);
+                break;
+
+            case GRAPH_OP_ADD:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_accumulate(input_a->gradient, current_node->gradient);
+                if (input_b && (input_b->flags & GRAPH_NODE_REQUIRES_GRAD))
+                    matrix_accumulate(input_b->gradient, current_node->gradient);
+                break;
+
+            case GRAPH_OP_SUB:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_accumulate(input_a->gradient, current_node->gradient);
+                if (input_b && (input_b->flags & GRAPH_NODE_REQUIRES_GRAD)) {
+                    Matrix *neg_grad = matrix_clone(current_node->gradient);
+                    matrix_scale(neg_grad, -1.0f);
+                    matrix_accumulate(input_b->gradient, neg_grad);
+                    matrix_destroy(neg_grad);
+                }
+                break;
+
+            case GRAPH_OP_MAT_MUL:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_multiply(input_a->gradient, current_node->gradient,
+                                    input_b->value, 0, 1, 0);
+                if (input_b->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_multiply(input_b->gradient, input_a->value,
+                                    current_node->gradient, 1, 0, 0);
+                break;
+
+            case GRAPH_OP_CROSS_ENTROPY:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_cross_entropy_gradient_predicted(
+                        input_a->gradient, input_a->value, input_b->value,
+                        current_node->gradient);
+                if (input_b && (input_b->flags & GRAPH_NODE_REQUIRES_GRAD))
+                    matrix_cross_entropy_gradient_expected(
+                        input_b->gradient, input_a->value, current_node->gradient);
+                break;
+        }
+    }
+}
