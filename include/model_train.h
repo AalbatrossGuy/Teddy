@@ -19,9 +19,9 @@ typedef struct {
   float lr;
 } TrainingParams;
 
-void get_model_prediction(CompiledGraph *graph, const float *input_data);
-void train_model(CompiledGraph *graph, TrainingParams *config);
-void evaluate_model_prediction(CompiledGraph *graph, TrainingParams *config);
+void get_model_prediction(ComputationGraph *graph, const float *input_data);
+void train_model(ComputationGraph *graph, TrainingParams *config);
+void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *config);
 void model_weight_matrix(GraphNode *weight_node);
 
 #endif // !MODEL_TRAIN_H
