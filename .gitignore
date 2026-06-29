@@ -56,3 +56,4 @@ dkms.conf
 .DS_Store
 .aider*
 .idea/
+compile_commands.json
