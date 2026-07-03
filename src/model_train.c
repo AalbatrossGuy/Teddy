@@ -1,4 +1,5 @@
 #include "model_train.h"
+#include "computation_engine.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +87,39 @@ void train_model(ComputationGraph *graph, TrainingParams *model_config) {
     }
 
     free(sample_sequence);
+    free(sample_input);
+    free(sample_target_label);
+}
+
+void test_model(ComputationGraph *graph, TrainingParams *model_config) {
+    int correct_predictions = 0;
+    float total_cost = 0.0f;
+
+    float *sample_input = (float *)malloc(sizeof(float) * model_config->in_dim);
+    float *sample_target_label = (float *)malloc(sizeof(float) * model_config->out_dim);
+
+    for (int i = 0; i < model_config->training_samples; i++) {
+        memcpy(sample_input, model_config->test_images + i * model_config->in_dim, sizeof(float) * model_config->in_dim);
+        memcpy(sample_target_label, model_config->test_labels + i * model_config->out_dim, sizeof(float) * model_config->out_dim);
+
+        matrix_upload(graph->input_node->value, sample_input);
+        matrix_upload(graph->target_node->value, sample_target_label);
+
+        compiled_graph_forward(graph->graph_loss);
+
+        total_cost += matrix_sum(graph->loss_node->value);
+
+        int predicted = matrix_argmax(graph->output_node->value);
+        int actual = matrix_argmax(graph->target_node->value);
+        if (predicted == actual)
+            correct_predictions++;
+    }
+
+    float accuracy_percentage = 100.0f * (float)correct_predictions / (float)model_config->test_samples;
+    float average_cost = total_cost / (float)model_config->test_samples;
+
+    printf("Teddy:  model test results: %d/%d correct (%.2f%%) | average cost: %.4f\n", correct_predictions, model_config->test_samples, accuracy_percentage, average_cost);
+
     free(sample_input);
     free(sample_target_label);
 }
