@@ -57,3 +57,4 @@ dkms.conf
 .aider*
 .idea/
 compile_commands.json
+data/
