@@ -16,7 +16,7 @@ void model_weight_matrix(GraphNode *weight_node) {
 
 void get_model_prediction(ComputationGraph *graph, const float *input_data) {
     matrix_upload(graph->input_node->value, input_data);
-    compiled_graph_forward(graph->graph_forward);
+    computation_graph_forward(graph->graph_forward);
 }
 
 static void shuffle_samples(int *indices, int count) {
@@ -62,8 +62,8 @@ void train_model(ComputationGraph *graph, TrainingParams *model_config) {
                 matrix_upload(graph->input_node->value, sample_input);
                 matrix_upload(graph->target_node->value, sample_target_label);
 
-                compiled_graph_forward(loss_function);
-                compiled_graph_backward(loss_function);
+                computation_graph_forward(loss_function);
+                computation_graph_backward(loss_function);
 
                 batch_cost += matrix_sum(graph->loss_node->value);
             }
@@ -91,7 +91,7 @@ void train_model(ComputationGraph *graph, TrainingParams *model_config) {
     free(sample_target_label);
 }
 
-void test_model(ComputationGraph *graph, TrainingParams *model_config) {
+void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *model_config) {
     int correct_predictions = 0;
     float total_cost = 0.0f;
 
@@ -105,7 +105,7 @@ void test_model(ComputationGraph *graph, TrainingParams *model_config) {
         matrix_upload(graph->input_node->value, sample_input);
         matrix_upload(graph->target_node->value, sample_target_label);
 
-        compiled_graph_forward(graph->graph_loss);
+        computation_graph_forward(graph->graph_loss);
 
         total_cost += matrix_sum(graph->loss_node->value);
 
