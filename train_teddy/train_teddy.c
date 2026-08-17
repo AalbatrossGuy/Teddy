@@ -165,4 +165,19 @@ int main(int argc, char **argv) {
   compute_backend_finish(teddy_backend);
   output_distribution(teddy);
 
+  printf("=========Teddy Evaluation=========");
+  evaluate_model_prediction(teddy, &training_parameters);
+
+  computation_graph_destroy(teddy);
+  free(raw_training_images);
+  free(raw_training_labels);
+  free(raw_test_images);
+  free(raw_test_labels);
+  free(encoded_training_labels);
+  free(encoded_test_labels);
+
+  compute_backend_destroy(teddy_backend);
+
+  printf("\nTeddy: Run finished. Au revoir!\n");
+
 }
