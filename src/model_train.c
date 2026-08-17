@@ -98,7 +98,7 @@ void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *model_co
     float *sample_input = (float *)malloc(sizeof(float) * model_config->in_dim);
     float *sample_target_label = (float *)malloc(sizeof(float) * model_config->out_dim);
 
-    for (int i = 0; i < model_config->training_samples; i++) {
+    for (int i = 0; i < model_config->test_samples; i++) {
         memcpy(sample_input, model_config->test_images + i * model_config->in_dim, sizeof(float) * model_config->in_dim);
         memcpy(sample_target_label, model_config->test_labels + i * model_config->out_dim, sizeof(float) * model_config->out_dim);
 
@@ -118,7 +118,7 @@ void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *model_co
     float accuracy_percentage = 100.0f * (float)correct_predictions / (float)model_config->test_samples;
     float average_cost = total_cost / (float)model_config->test_samples;
 
-    printf("Teddy:  model test results: %d/%d correct (%.2f%%) | average cost: %.4f\n", correct_predictions, model_config->test_samples, accuracy_percentage, average_cost);
+    printf("Teddy:  Model test results: %d/%d correct (%.2f%%) | average cost: %.4f\n", correct_predictions, model_config->test_samples, accuracy_percentage, average_cost);
 
     free(sample_input);
     free(sample_target_label);

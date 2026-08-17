@@ -9,7 +9,7 @@ ComputeBackend *compute_backend_init(const char *kernel_path) {
   ComputeBackend *backend = (ComputeBackend *)calloc(1, sizeof(ComputeBackend));
   backend->type = COMPUTE_BACKEND_CPU;
   backend->device_handle = NULL;
-  printf("[teddy] compiling with CPU...\n");
+  printf("compiling with CPU...\n");
   return backend;
 }
 
