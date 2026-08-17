@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 // Model Defitions
 #define model_dimm 784
@@ -130,14 +131,18 @@ int main(int argc, char **argv) {
   one_hot_encode(encoded_training_labels, raw_training_labels, model_training_data_count, model_num_classes);
   one_hot_encode(encoded_test_labels, raw_test_labels, model_training_data_count, model_num_classes);
 
+  srand((unsigned int) time(NULL));
+  int demo_sample_index = rand() % model_training_data_count;
+  const float *demo_sample_image = raw_training_images + (size_t) demo_sample_index * model_dimm;
+
   printf("\n======== Sample Training Digit ==========\n");
-  model_draw_digit(raw_training_images);
-  printf("Teddy: label: %d\n\n", (int) raw_training_labels[0]);
+  model_draw_digit(demo_sample_image);
+  printf("Teddy: label: %d\n\n", (int) raw_training_labels[demo_sample_index]);
 
   ComputationGraph *teddy = model_build();
 
   printf("\n======== Pre-training Inference ==========\n");
-  get_model_prediction(teddy, raw_training_images);
+  get_model_prediction(teddy, demo_sample_image);
   compute_backend_finish(teddy_backend);
   output_distribution(teddy);
 
@@ -151,7 +156,7 @@ int main(int argc, char **argv) {
     model_test_data_count,
     model_dimm,
     model_num_classes,
-    3,
+    10,
     50,
     0.05f
   };
@@ -160,11 +165,11 @@ int main(int argc, char **argv) {
   compute_backend_finish(teddy_backend);
 
   printf("\n======== Post-training Inference=======\n");
-  get_model_prediction(teddy, raw_training_images);
+  get_model_prediction(teddy, demo_sample_image);
   compute_backend_finish(teddy_backend);
   output_distribution(teddy);
 
-  printf("=========Teddy Evaluation=========");
+  printf("\n=========Teddy Evaluation=========\n");
   evaluate_model_prediction(teddy, &training_parameters);
 
   computation_graph_destroy(teddy);
