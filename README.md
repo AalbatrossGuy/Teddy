@@ -6,8 +6,10 @@
 I always had a deep appreciation for C as a language and the philosophy it follows. I then came across this [video](https://youtu.be/hL_n_GljC0I?si=qcqbFWwySUdKiIq) and I was genuinely impressed by what he did. I also have an interest in perceptrons and machine learning in general, hence it's safe to say that the video inspired me to make something like this. Teddy follows the same logic shown in the video (more or less) but it differs in implementation. I would also like to point out that Teddy is not vibecoded, in fact, 0% AI was used while building it. Although I did use AI to build the GIFs present in this README and the documentation of how Teddy functions simply because I didn't know how to make custom GIFs for this purpose and I didn't want to write docs. 
 
 ## How it works
-<img width="800" height="445" alt="teddy_flow" src="https://github.com/user-attachments/assets/95f874a9-137b-4abb-9893-b6760a3bc69a" /> <br>
-<img width="800" height="500" alt="teddy_neural_net" src="https://github.com/user-attachments/assets/d81a40a0-0e6e-4d28-97d1-0e571ca78f07" /> <br>
+
+<img width="800" height="445" alt="teddy_neural_net" src="https://github.com/user-attachments/assets/2b02f613-b464-42ec-90dd-27fc45615f2b" /> <br>
+<img width="800" height="500" alt="teddy_flow" src="https://github.com/user-attachments/assets/15cd5805-074c-4fe4-862b-6065ebe9e4f7" /> <br>
+
 
 Teddy is a MLP (Multi Layer Perceptron) that can, as of now, classify MNIST datasets. At its core, Teddy is built the same way every modern deep learning framework is, just shrunk down. Underneath everything is plain array math wrapped in a small structure that keeps track of a value's shape alongside its numbers. On top of that layer sits the automatic differentiation engine. Instead of running each calculation instantly, Teddy builds up a graph of operations first — this value feeds into that one, which feeds into another — and only once the whole graph is assembled does it walk through and compute everything. That separation is what makes learning possible at all: after the graph produces its final answer, Teddy walks back through the exact same graph in reverse, applying the chain rule at every step to figure out how much each earlier value contributed to the final error.
 
