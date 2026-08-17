@@ -80,7 +80,7 @@ GraphNode *computation_graph_matrix_multiply(ComputationGraph *graph, GraphNode 
 GraphNode *computation_graph_cross_entropy(ComputationGraph *graph, GraphNode *predicted_node, GraphNode *expected_node, uint32_t flags);
 
 void computation_graph_compile(ComputationGraph *graph);
-void compiled_graph_forward(CompiledGraph *compiled_graph);
-void compiled_graph_backward(CompiledGraph *compiled_graph);
+void computation_graph_forward(CompiledGraph *compiled_graph);
+void computation_graph_backward(CompiledGraph *compiled_graph);
 
 #endif
