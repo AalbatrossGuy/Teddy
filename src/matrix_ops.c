@@ -59,6 +59,23 @@ void matrix_fill(Matrix *mat, float value) {
   compute_math_fill(mat->host_data, value, total);
 }
 
+void matrix_fill_random(Matrix *mat, float lower, float upper) {
+  if (!seeded) {
+    srand((unsigned int)time(NULL));
+    seeded = 1;
+  }
+
+  int total = mat->rows * mat->columns;
+  float *data = (float *)malloc(sizeof(float) * total);
+  float range = upper - lower;
+
+  for (int i = 0; i < total; i++) {
+    data[i] = lower + ((float)rand() / (float)RAND_MAX) * range;
+  }
+  matrix_upload(mat, data);
+  free(data);
+}
+
 void matrix_copy(Matrix *dest, const Matrix *src) {
   int total = src->rows * src->columns;
   compute_math_copy(dest->host_data, src->host_data, total);
