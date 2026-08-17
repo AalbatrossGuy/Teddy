@@ -17,7 +17,7 @@ void compute_backend_destroy(ComputeBackend *backend) {
   if (!backend) return;
 
   if (global_backend == backend) {
-    global_backend == NULL;
+    global_backend = NULL;
   }
 
   free(backend);
