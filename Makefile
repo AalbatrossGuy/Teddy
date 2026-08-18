@@ -2,7 +2,7 @@ CC        := cc
 CFLAGS    := -O2 -Wall -Wextra -Iinclude -std=c11
 BUILD_DIR := build
 
-SRCS := src/compute_backend.c src/math_ops.c src/matrix_ops.c src/computation_engine.c src/dataset_ops.c src/model_train.c
+SRCS := src/compute_backend.c src/gpu_compute.c src/math_ops.c src/matrix_ops.c src/computation_engine.c src/dataset_ops.c src/model_train.c
 OBJS := $(SRCS:src/%.c=$(BUILD_DIR)/%.o)
 
 KERNEL := $(shell uname -s)
@@ -43,12 +43,12 @@ else
 endif
 
 ifeq ($(SYSTEM_HAS_OPENCL),1)
-	CFLAGS += -DMG_HAS_OPENCL
+	CFLAGS += -DSYSTEM_HAS_OPENCL
 endif
 
 ifeq ($(FORCE_CPU),1)
 	SYSTEM_HAS_OPENCL := 0
-	CFLAGS := $(filter-out -DMG_HAS_OPENCL,$(CFLAGS))
+	CFLAGS := $(filter-out -DSYSTEM_HAS_OPENCL,$(CFLAGS))
 	LDFLAGS := -lm
 endif
 
