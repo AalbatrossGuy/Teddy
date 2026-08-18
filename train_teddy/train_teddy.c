@@ -85,7 +85,7 @@ static void output_distribution(ComputationGraph *graph) {
 
 
 int main(int argc, char **argv) {
-  const char *kernel_path = "kernels/opencl.cl";
+  const char *kernel_path = "kernel/opencl.c";
   const char *data_directory = "data";
 
   if (argc > 1) {
@@ -95,7 +95,8 @@ int main(int argc, char **argv) {
   if (argc > 2) {
     data_directory = argv[2];
   }
-  printf("Teddy.");
+  printf("\n\033[1mTeddy: A Machine Learning Library in C by AalbatrossGuy (AG).\033[0m\n");
+  printf("\033[1mAG: Check out my homelab at https://vargoseus.com/\033[0m\n\n");
 
   ComputeBackend *teddy_backend = compute_backend_init(kernel_path);
   if (!teddy_backend) {

@@ -4,12 +4,18 @@
 #define MATRIX_OPS_H
 
 #include "compute_backend.h"
+#ifdef SYSTEM_HAS_OPENCL
+#include "gpu_compute.h"
+#endif
 #include <stddef.h>
 
 typedef struct {
   int rows;
   int columns;
   float *host_data;
+#ifdef SYSTEM_HAS_OPENCL
+  cl_mem device_buffer;
+#endif
 } Matrix;
 
 Matrix *matrix_create(int rows, int columns);
