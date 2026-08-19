@@ -135,6 +135,10 @@ GraphNode *computation_graph_cross_entropy(ComputationGraph *graph, GraphNode *p
   return create_binary_node(graph, predicted_node, expected_node, predicted_node->value->rows, predicted_node->value->columns, GRAPH_OP_CROSS_ENTROPY, flags);
 }
 
+GraphNode *computation_graph_add_bias(ComputationGraph *graph, GraphNode *value_node, GraphNode *bias_node, uint32_t flags) {
+  return create_binary_node(graph, value_node, bias_node, value_node->value->rows, value_node->value->columns, GRAPH_OP_ADD_BIAS, flags);
+}
+
 
 static CompiledGraph *sort(ComputationGraph *graph, GraphNode *rootNode) {
     int capacity = graph->node_count;
@@ -235,6 +239,10 @@ void computation_graph_forward(CompiledGraph *graph) {
             case GRAPH_OP_CROSS_ENTROPY:
                 matrix_cross_entropy(current_node->value, input_a->value, input_b->value);
                 break;
+
+            case GRAPH_OP_ADD_BIAS:
+                matrix_add_bias(current_node->value, input_a->value, input_b->value);
+                break;
         }
     }
 }
@@ -324,6 +332,13 @@ void computation_graph_backward(CompiledGraph *graph) {
                 if (input_b && (input_b->flags & GRAPH_NODE_REQUIRES_GRAD))
                     matrix_cross_entropy_gradient_expected(
                         input_b->gradient, input_a->value, current_node->gradient);
+                break;
+
+            case GRAPH_OP_ADD_BIAS:
+                if (input_a->flags & GRAPH_NODE_REQUIRES_GRAD)
+                    matrix_accumulate(input_a->gradient, current_node->gradient);
+                if (input_b && (input_b->flags & GRAPH_NODE_REQUIRES_GRAD))
+                    matrix_add_bias_gradient(input_b->gradient, current_node->gradient);
                 break;
         }
     }

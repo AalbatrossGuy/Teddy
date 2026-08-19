@@ -16,6 +16,8 @@ static const char *kernel_names[OPENCL_KERNEL_COUNT] = {
   "kernel_math_clear",
   "kernel_math_copy",
   "kernel_math_accumulate",
+  "kernel_add_bias",
+  "kernel_add_bias_gradient",
   "kernel_matrix_multiplication_nn",
   "kernel_matrix_multiplication_nt",
   "kernel_matrix_multiplication_tn",

@@ -41,6 +41,24 @@ void compute_math_accumulate(float *dest, const float *src, int total) {
   }
 }
 
+void compute_add_bias(float *out, const float *value, const float *bias, int rows, int columns) {
+  for (int row = 0; row < rows; row++) {
+    for (int column = 0; column < columns; column++) {
+      out[row * columns + column] = value[row * columns + column] + bias[row];
+    }
+  }
+}
+
+void compute_add_bias_gradient(float *bias_gradient, const float *upstream_gradient, int rows, int columns) {
+  for (int row = 0; row < rows; row++) {
+    float sum = 0.0f;
+    for (int column = 0; column < columns; column++) {
+      sum += upstream_gradient[row * columns + column];
+    }
+    bias_gradient[row] += sum;
+  }
+}
+
 void compute_math_matrix_multiplication_nn(float *out, const float *term_a, const float *term_b, int m, int n, int k, int zero_output) {
   if (zero_output) {
     memset(out, 0, sizeof(float) * m * n);
@@ -112,44 +130,44 @@ void compute_relu_backward(float *input_gradient, const float *in, const float *
   }
 }
 
-void compute_softmax_forward(float *out, const float *in, int total) {
-  float max_value = in[0];
-
-  for (int i = 1; i < total; i++) {
-    if (in[i] > max_value) {
-      max_value = in[i];
+void compute_softmax_forward(float *out, const float *in, int rows, int columns) {
+  for (int column = 0; column < columns; column++) {
+    float max_value = in[column];
+    for (int row = 1; row < rows; row++) {
+      float v = in[row * columns + column];
+      if (v > max_value) {
+        max_value = v;
+      }
     }
-  }
 
-  float exponential_sum = 0.0f;
-  for (int i = 0; i < total; i++) {
-    out[i] = expf(in[i] - max_value);
-    exponential_sum += out[i];
-  }
+    float exponential_sum = 0.0f;
+    for (int row = 0; row < rows; row++) {
+      float e = expf(in[row * columns + column] - max_value);
+      out[row * columns + column] = e;
+      exponential_sum += e;
+    }
 
-  float inverse_sum = 1.0f / exponential_sum;
-  for (int i = 0; i < total; i++) {
-    out[i] *= inverse_sum;
+    float inverse_sum = 1.0f / exponential_sum;
+    for (int row = 0; row < rows; row++) {
+      out[row * columns + column] *= inverse_sum;
+    }
   }
 }
 
-void compute_softmax_backward(float *input_gradient, const float *softmax_out, const float *upstream_gradient, int vector_size) {
-  for (int i = 0; i < vector_size; i++) {
-    float partial_sum = 0.0f;
+void compute_softmax_backward(float *input_gradient, const float *softmax_out, const float *upstream_gradient, int rows, int columns) {
+  for (int column = 0; column < columns; column++) {
+    for (int i = 0; i < rows; i++) {
+      float partial_sum = 0.0f;
+      float si = softmax_out[i * columns + column];
 
-    for (int j = 0; j < vector_size; j++) {
-      float jacobian_elem;
-
-      if (i == j) {
-        jacobian_elem = softmax_out[i] * (1.0f - softmax_out[i]);
-      } else {
-        jacobian_elem = -softmax_out[i] * softmax_out[j];
+      for (int j = 0; j < rows; j++) {
+        float sj = softmax_out[j * columns + column];
+        float jacobian_elem = (i == j) ? si * (1.0f - si) : -si * sj;
+        partial_sum += jacobian_elem * upstream_gradient[j * columns + column];
       }
 
-      partial_sum += jacobian_elem * upstream_gradient[j];
+      input_gradient[i * columns + column] += partial_sum;
     }
-
-    input_gradient[i] += partial_sum;
   }
 }
 

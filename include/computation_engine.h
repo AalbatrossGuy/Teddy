@@ -17,7 +17,8 @@ typedef enum {
   GRAPH_OP_ADD,
   GRAPH_OP_SUB,
   GRAPH_OP_MAT_MUL,
-  GRAPH_OP_CROSS_ENTROPY
+  GRAPH_OP_CROSS_ENTROPY,
+  GRAPH_OP_ADD_BIAS
 } GraphOperationType;
 
 typedef enum {
@@ -78,6 +79,7 @@ GraphNode *computation_graph_add(ComputationGraph *graph, GraphNode *node_a, Gra
 GraphNode *computation_graph_subtract(ComputationGraph *graph, GraphNode *node_a, GraphNode *node_b, uint32_t flags);
 GraphNode *computation_graph_matrix_multiply(ComputationGraph *graph, GraphNode *node_a, GraphNode *node_b, uint32_t flags);
 GraphNode *computation_graph_cross_entropy(ComputationGraph *graph, GraphNode *predicted_node, GraphNode *expected_node, uint32_t flags);
+GraphNode *computation_graph_add_bias(ComputationGraph *graph, GraphNode *value_node, GraphNode *bias_node, uint32_t flags);
 
 void computation_graph_compile(ComputationGraph *graph);
 void computation_graph_forward(CompiledGraph *compiled_graph);

@@ -33,6 +33,8 @@ void matrix_fill_random(Matrix *mat, float lower, float upper);
 void matrix_add(Matrix *out, const Matrix *mat_a, const Matrix *mat_b);
 void matrix_sub(Matrix *out, const Matrix *mat_a, const Matrix *mat_b);
 void matrix_accumulate(Matrix *dest, const Matrix *src);
+void matrix_add_bias(Matrix *out, const Matrix *value, const Matrix *bias);
+void matrix_add_bias_gradient(Matrix *bias_gradient, const Matrix *upstream_gradient);
 void matrix_scale(Matrix *mat, float scalar);
 void matrix_multiply(Matrix *out, const Matrix *mat_a, const Matrix *mat_b, int transpose_a, int transpose_b, int zero_output);
 

@@ -5,12 +5,8 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <math.h>
-#include <time.h>
 #include <stdlib.h>
 #include <string.h>
-
-
-static int seeded = 0;
 
 #ifdef SYSTEM_HAS_OPENCL
 static inline int is_gpu_mode(void) {
@@ -130,11 +126,6 @@ void matrix_fill(Matrix *mat, float value) {
 }
 
 void matrix_fill_random(Matrix *mat, float lower, float upper) {
-  if (!seeded) {
-    srand((unsigned int)time(NULL));
-    seeded = 1;
-  }
-
   int total = mat->rows * mat->columns;
   float *data = (float *)malloc(sizeof(float) * total);
   float range = upper - lower;
@@ -220,6 +211,41 @@ void matrix_accumulate(Matrix *dest, const Matrix *src) {
   compute_math_accumulate(dest->host_data, src->host_data, total);
 }
 
+void matrix_add_bias(Matrix *out, const Matrix *value, const Matrix *bias) {
+#ifdef SYSTEM_HAS_OPENCL
+  if (is_gpu_mode()) {
+    OpenCLDevice *gpu = get_gpu();
+    cl_kernel kernel = opencl_device_get_kernel(gpu, OPENCL_KERNEL_ADD_BIAS);
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), &out->device_buffer);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), &value->device_buffer);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), &bias->device_buffer);
+    clSetKernelArg(kernel, 3, sizeof(int), &out->rows);
+    clSetKernelArg(kernel, 4, sizeof(int), &out->columns);
+    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_ADD_BIAS, out->rows * out->columns);
+    return;
+  }
+#endif
+
+  compute_add_bias(out->host_data, value->host_data, bias->host_data, out->rows, out->columns);
+}
+
+void matrix_add_bias_gradient(Matrix *bias_gradient, const Matrix *upstream_gradient) {
+#ifdef SYSTEM_HAS_OPENCL
+  if (is_gpu_mode()) {
+    OpenCLDevice *gpu = get_gpu();
+    cl_kernel kernel = opencl_device_get_kernel(gpu, OPENCL_KERNEL_ADD_BIAS_GRADIENT);
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), &bias_gradient->device_buffer);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), &upstream_gradient->device_buffer);
+    clSetKernelArg(kernel, 2, sizeof(int), &upstream_gradient->rows);
+    clSetKernelArg(kernel, 3, sizeof(int), &upstream_gradient->columns);
+    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_ADD_BIAS_GRADIENT, upstream_gradient->rows);
+    return;
+  }
+#endif
+
+  compute_add_bias_gradient(bias_gradient->host_data, upstream_gradient->host_data, upstream_gradient->rows, upstream_gradient->columns);
+}
+
 void matrix_scale(Matrix *mat, float scalar) {
   int total = mat->rows * mat->columns;
 
@@ -251,14 +277,6 @@ void matrix_multiply(Matrix *out, const Matrix *mat_a, const Matrix *mat_b, int 
   if (is_gpu_mode()) {
     OpenCLDevice *gpu = get_gpu();
 
-    if (zero_output) {
-      int total = m * n;
-      cl_kernel clear_kernel = opencl_device_get_kernel(gpu, OPENCL_KERNEL_MATH_CLEAR);
-      clSetKernelArg(clear_kernel, 0, sizeof(cl_mem), &out->device_buffer);
-      clSetKernelArg(clear_kernel, 1, sizeof(int), &total);
-      opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_MATH_CLEAR, total);
-    }
-
     OpenCLKernelId kernel_id;
     if (!transpose_a && !transpose_b) {
       kernel_id = OPENCL_KERNEL_MATRIX_MULTIPLICATION_NN;
@@ -277,6 +295,7 @@ void matrix_multiply(Matrix *out, const Matrix *mat_a, const Matrix *mat_b, int 
     clSetKernelArg(kernel, 3, sizeof(int), &m);
     clSetKernelArg(kernel, 4, sizeof(int), &n);
     clSetKernelArg(kernel, 5, sizeof(int), &k);
+    clSetKernelArg(kernel, 6, sizeof(int), &zero_output);
 
     size_t global_work_size[2] = { (size_t)m, (size_t)n };
     clEnqueueNDRangeKernel(gpu->queue, kernel, 2, NULL, global_work_size, NULL, 0, NULL, NULL);
@@ -314,21 +333,20 @@ void matrix_reLU(Matrix *out, const Matrix *in) {
 }
 
 void matrix_softmax(Matrix *out, const Matrix *in) {
-  int total = in->rows * in->columns;
-
 #ifdef SYSTEM_HAS_OPENCL
   if (is_gpu_mode()) {
     OpenCLDevice *gpu = get_gpu();
     cl_kernel kernel = opencl_device_get_kernel(gpu, OPENCL_KERNEL_SOFTMAX_FORWARD);
     clSetKernelArg(kernel, 0, sizeof(cl_mem), &out->device_buffer);
     clSetKernelArg(kernel, 1, sizeof(cl_mem), &in->device_buffer);
-    clSetKernelArg(kernel, 2, sizeof(int), &total);
-    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_SOFTMAX_FORWARD, 1);
+    clSetKernelArg(kernel, 2, sizeof(int), &in->rows);
+    clSetKernelArg(kernel, 3, sizeof(int), &in->columns);
+    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_SOFTMAX_FORWARD, in->columns);
     return;
   }
 #endif
 
-  compute_softmax_forward(out->host_data, in->host_data, total);
+  compute_softmax_forward(out->host_data, in->host_data, in->rows, in->columns);
 }
 
 void matrix_cross_entropy(Matrix *out, const Matrix *predicted, const Matrix *expected) {
@@ -370,8 +388,6 @@ void matrix_reLU_gradient(Matrix *input_grad, const Matrix *input_val, const Mat
 }
 
 void matrix_softmax_gradient(Matrix *input_grad, const Matrix *softmax_out, const Matrix *upstream_grad) {
-  int vector_size = softmax_out->rows * softmax_out->columns;
-
 #ifdef SYSTEM_HAS_OPENCL
   if (is_gpu_mode()) {
     OpenCLDevice *gpu = get_gpu();
@@ -379,13 +395,14 @@ void matrix_softmax_gradient(Matrix *input_grad, const Matrix *softmax_out, cons
     clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_grad->device_buffer);
     clSetKernelArg(kernel, 1, sizeof(cl_mem), &softmax_out->device_buffer);
     clSetKernelArg(kernel, 2, sizeof(cl_mem), &upstream_grad->device_buffer);
-    clSetKernelArg(kernel, 3, sizeof(int), &vector_size);
-    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_SOFTMAX_BACKWARD, 1);
+    clSetKernelArg(kernel, 3, sizeof(int), &softmax_out->rows);
+    clSetKernelArg(kernel, 4, sizeof(int), &softmax_out->columns);
+    opencl_device_dispatch_1d(gpu, OPENCL_KERNEL_SOFTMAX_BACKWARD, softmax_out->columns);
     return;
   }
 #endif
 
-  compute_softmax_backward(input_grad->host_data, softmax_out->host_data, upstream_grad->host_data, vector_size);
+  compute_softmax_backward(input_grad->host_data, softmax_out->host_data, upstream_grad->host_data, softmax_out->rows, softmax_out->columns);
 }
 
 void matrix_cross_entropy_gradient_predicted(Matrix *predicted_grad, const Matrix *predicted_val, const Matrix *expected_val, const Matrix *upstream_grad) {

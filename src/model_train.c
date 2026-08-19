@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <time.h>
-
 
 void model_weight_matrix(GraphNode *weight_node) {
     int neuron_in_count = weight_node->value->columns;
@@ -14,9 +12,19 @@ void model_weight_matrix(GraphNode *weight_node) {
     matrix_fill_random(weight_node->value, -bound, bound);
 }
 
-void get_model_prediction(ComputationGraph *graph, const float *input_data) {
-    matrix_upload(graph->input_node->value, input_data);
+void get_model_prediction(ComputationGraph *graph, const float *input_data, int in_dim, int batch_size) {
+    float *packed_input = (float *)malloc(sizeof(float) * in_dim * batch_size);
+
+    for (int feature = 0; feature < in_dim; feature++) {
+        for (int sample = 0; sample < batch_size; sample++) {
+            packed_input[feature * batch_size + sample] = input_data[feature];
+        }
+    }
+
+    matrix_upload(graph->input_node->value, packed_input);
     computation_graph_forward(graph->graph_forward);
+
+    free(packed_input);
 }
 
 static void shuffle_samples(int *indices, int count) {
@@ -28,17 +36,26 @@ static void shuffle_samples(int *indices, int count) {
     }
 }
 
-void train_model(ComputationGraph *graph, TrainingParams *model_config) {
-    srand((unsigned int)time(NULL));
+static void pack_batch(float *dst, const float *dataset, const int *indices, int batch_size, int feature_dim) {
+    for (int feature = 0; feature < feature_dim; feature++) {
+        for (int sample = 0; sample < batch_size; sample++) {
+            dst[feature * batch_size + sample] = dataset[indices[sample] * feature_dim + feature];
+        }
+    }
+}
 
-    int batches_per_epoch = model_config->training_samples / model_config->batch_size;
+void train_model(ComputationGraph *graph, TrainingParams *model_config) {
+    int batch_size = model_config->batch_size;
+    int in_dim = model_config->in_dim;
+    int out_dim = model_config->out_dim;
+    int batches_per_epoch = model_config->training_samples / batch_size;
 
     int *sample_sequence = (int *)malloc(sizeof(int) * model_config->training_samples);
     for (int i = 0; i < model_config->training_samples; i++)
         sample_sequence[i] = i;
 
-    float *sample_input = (float *)malloc(sizeof(float) * model_config->in_dim);
-    float *sample_target_label = (float *)malloc(sizeof(float) * model_config->out_dim);
+    float *batch_input = (float *)malloc(sizeof(float) * in_dim * batch_size);
+    float *batch_target = (float *)malloc(sizeof(float) * out_dim * batch_size);
 
     for (int epoch = 0; epoch < model_config->epochs; epoch++) {
         shuffle_samples(sample_sequence, model_config->training_samples);
@@ -51,26 +68,19 @@ void train_model(ComputationGraph *graph, TrainingParams *model_config) {
                     matrix_clear(node->gradient);
             }
 
-            float batch_cost = 0.0f;
+            const int *batch_indices = sample_sequence + batch * batch_size;
+            pack_batch(batch_input, model_config->training_images, batch_indices, batch_size, in_dim);
+            pack_batch(batch_target, model_config->training_labels, batch_indices, batch_size, out_dim);
 
-            for (int sample = 0; sample < model_config->batch_size; sample++) {
-                int sample_index = sample_sequence[batch * model_config->batch_size + sample];
+            matrix_upload(graph->input_node->value, batch_input);
+            matrix_upload(graph->target_node->value, batch_target);
 
-                memcpy(sample_input, model_config->training_images + sample_index * model_config->in_dim, sizeof(float) * model_config->in_dim);
-                memcpy(sample_target_label, model_config->training_labels + sample_index * model_config->out_dim, sizeof(float) * model_config->out_dim);
+            computation_graph_forward(loss_function);
+            computation_graph_backward(loss_function);
 
-                matrix_upload(graph->input_node->value, sample_input);
-                matrix_upload(graph->target_node->value, sample_target_label);
+            float average_cost = matrix_sum(graph->loss_node->value) / (float)batch_size;
 
-                computation_graph_forward(loss_function);
-                computation_graph_backward(loss_function);
-
-                batch_cost += matrix_sum(graph->loss_node->value);
-            }
-
-            float average_cost = batch_cost / (float)model_config->batch_size;
-
-            float scaled_learning_rate = model_config->lr / (float)model_config->batch_size;
+            float scaled_learning_rate = model_config->lr / (float)batch_size;
             for (int n = 0; n < loss_function->length; n++) {
                 GraphNode *node = loss_function->ordered_nodes[n];
                 if (!(node->flags & GRAPH_NODE_PARAMETER))
@@ -87,39 +97,78 @@ void train_model(ComputationGraph *graph, TrainingParams *model_config) {
     }
 
     free(sample_sequence);
-    free(sample_input);
-    free(sample_target_label);
+    free(batch_input);
+    free(batch_target);
 }
 
 void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *model_config) {
+    int batch_size = model_config->batch_size;
+    int in_dim = model_config->in_dim;
+    int out_dim = model_config->out_dim;
+    int batch_count = model_config->test_samples / batch_size;
+
+    int *sequential_indices = (int *)malloc(sizeof(int) * model_config->test_samples);
+    for (int i = 0; i < model_config->test_samples; i++)
+        sequential_indices[i] = i;
+
+    float *batch_input = (float *)malloc(sizeof(float) * in_dim * batch_size);
+    float *batch_target = (float *)malloc(sizeof(float) * out_dim * batch_size);
+    float *output_buffer = (float *)malloc(sizeof(float) * out_dim * batch_size);
+    float *target_buffer = (float *)malloc(sizeof(float) * out_dim * batch_size);
+
     int correct_predictions = 0;
     float total_cost = 0.0f;
 
-    float *sample_input = (float *)malloc(sizeof(float) * model_config->in_dim);
-    float *sample_target_label = (float *)malloc(sizeof(float) * model_config->out_dim);
+    for (int batch = 0; batch < batch_count; batch++) {
+        const int *batch_indices = sequential_indices + batch * batch_size;
+        pack_batch(batch_input, model_config->test_images, batch_indices, batch_size, in_dim);
+        pack_batch(batch_target, model_config->test_labels, batch_indices, batch_size, out_dim);
 
-    for (int i = 0; i < model_config->test_samples; i++) {
-        memcpy(sample_input, model_config->test_images + i * model_config->in_dim, sizeof(float) * model_config->in_dim);
-        memcpy(sample_target_label, model_config->test_labels + i * model_config->out_dim, sizeof(float) * model_config->out_dim);
-
-        matrix_upload(graph->input_node->value, sample_input);
-        matrix_upload(graph->target_node->value, sample_target_label);
+        matrix_upload(graph->input_node->value, batch_input);
+        matrix_upload(graph->target_node->value, batch_target);
 
         computation_graph_forward(graph->graph_loss);
 
         total_cost += matrix_sum(graph->loss_node->value);
 
-        int predicted = matrix_argmax(graph->output_node->value);
-        int actual = matrix_argmax(graph->target_node->value);
-        if (predicted == actual)
-            correct_predictions++;
+        matrix_download(graph->output_node->value, output_buffer);
+        matrix_download(graph->target_node->value, target_buffer);
+
+        for (int sample = 0; sample < batch_size; sample++) {
+            int predicted = 0;
+            float best_predicted = output_buffer[sample];
+            for (int c = 1; c < out_dim; c++) {
+                float value = output_buffer[c * batch_size + sample];
+                if (value > best_predicted) {
+                    best_predicted = value;
+                    predicted = c;
+                }
+            }
+
+            int actual = 0;
+            float best_actual = target_buffer[sample];
+            for (int c = 1; c < out_dim; c++) {
+                float value = target_buffer[c * batch_size + sample];
+                if (value > best_actual) {
+                    best_actual = value;
+                    actual = c;
+                }
+            }
+
+            if (predicted == actual)
+                correct_predictions++;
+        }
     }
 
-    float accuracy_percentage = 100.0f * (float)correct_predictions / (float)model_config->test_samples;
-    float average_cost = total_cost / (float)model_config->test_samples;
+    int evaluated_samples = batch_count * batch_size;
+    float accuracy_percentage = 100.0f * (float)correct_predictions / (float)evaluated_samples;
+    float average_cost = total_cost / (float)evaluated_samples;
 
-    printf("Teddy:  Model test results: %d/%d correct (%.2f%%) | average cost: %.4f\n", correct_predictions, model_config->test_samples, accuracy_percentage, average_cost);
+    printf("Teddy:  Model test results: %d/%d correct (%.2f%%) | average cost: %.4f\n", correct_predictions, evaluated_samples, accuracy_percentage, average_cost);
 
-    free(sample_input);
-    free(sample_target_label);
+    free(sequential_indices);
+    free(batch_input);
+    free(batch_target);
+    free(output_buffer);
+    free(target_buffer);
 }

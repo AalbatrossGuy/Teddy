@@ -19,7 +19,7 @@ typedef struct {
   float lr;
 } TrainingParams;
 
-void get_model_prediction(ComputationGraph *graph, const float *input_data);
+void get_model_prediction(ComputationGraph *graph, const float *input_data, int in_dim, int batch_size);
 void train_model(ComputationGraph *graph, TrainingParams *config);
 void evaluate_model_prediction(ComputationGraph *graph, TrainingParams *config);
 void model_weight_matrix(GraphNode *weight_node);
