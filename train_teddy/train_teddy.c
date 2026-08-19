@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
   if (seed_override) {
     rng_seed = (unsigned int) strtoul(seed_override, NULL, 10);
   }
-  printf("Teddy: RNG seed: %u (override with TEDDY_SEED)\n", rng_seed);
+  printf("Teddy: RNG seed: %u \n", rng_seed);
   srand(rng_seed);
 
   printf("\n======== Sample Training Digit ==========\n");
