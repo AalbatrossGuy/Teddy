@@ -16,17 +16,16 @@ ComputeBackend *compute_backend_init(const char *kernel_path) {
   if (gpu) {
     backend->type = COMPUTE_BACKEND_GPU;
     backend->device_handle = gpu;
-    printf("Teddy: Compiling with GPU...\n");
     return backend;
   }
   printf("Teddy: GPU unavailable, falling back to CPU\n");
 #else
   (void)kernel_path;
+  printf("Teddy: Compiling with CPU...\n");
 #endif
 
   backend->type = COMPUTE_BACKEND_CPU;
   backend->device_handle = NULL;
-  printf("Teddy: Compiling with CPU...\n");
   return backend;
 }
 
